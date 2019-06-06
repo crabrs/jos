@@ -59,6 +59,48 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	uintptr_t ebp;
+	uintptr_t eip;
+	uint32_t arg0, arg1, arg2, arg3, arg4;
+
+	ebp = read_ebp();
+
+	cprintf("Stack backtrace:\n");
+
+	while (ebp != 0x0)
+	{	
+		// ebp + 4 -> the function's return instruction pointer
+		eip = *(uintptr_t *)(ebp + 0x4);
+		arg0 = *(uint32_t *)(ebp + 0x8);
+		arg1 = *(uint32_t *)(ebp + 0xc);
+		arg2 = *(uint32_t *)(ebp + 0xf);
+		arg3 = *(uint32_t *)(ebp + 0x14);
+		arg4 = *(uint32_t *)(ebp + 0x18);
+
+		cprintf("  ebp %x  eip %x args %08x %08x %08x %08x %08x\n", 
+			ebp, eip, arg0, arg1, arg2, arg3, arg4);
+
+		struct Eipdebuginfo info;
+    	if (debuginfo_eip(eip, &info) != 0) {
+        	cprintf("    <unknow>: -- 0x%08x --\n", eip);
+    	}
+    	else {
+        	char fnname[256];
+        	int j;
+        	for (j = 0; j < info.eip_fn_namelen; j ++) {
+         	   fnname[j] = info.eip_fn_name[j];
+        	}
+        	fnname[j] = '\0';
+        	cprintf("  \t%s:%d: %s+%d\n", info.eip_file, info.eip_line,
+                	fnname, eip - info.eip_fn_addr);
+    	}
+
+		// update ebp, eip
+		// ebp -> last ebp value
+
+		ebp = *(uint32_t *)ebp;
+	}
+
 	return 0;
 }
 
